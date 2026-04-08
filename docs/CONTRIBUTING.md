@@ -90,82 +90,29 @@ cd frontend && npm test
 
 ---
 
-## Task 2 — Create the CI Workflow
+## Task 2 — CI Workflow for the Backend ("Hello World")
 
-Create the GitHub Actions workflow file:
+A skeleton workflow already exists at `.github/workflows/ci-backend.yml`. The `test` job is already defined. Your task is to complete the `build-and-push` job.
 
-```bash
-mkdir -p .github/workflows
-touch .github/workflows/ci.yml
-```
+### 2.1 — Add Docker Hub secrets to your repository
 
-### 2.1 — Define triggers and structure
+Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions** and add:
 
-```yaml
-name: CI
+| Secret | Value |
+|---|---|
+| `DOCKERHUB_USERNAME` | Your Docker Hub username |
+| `DOCKERHUB_TOKEN` | Your Docker Hub access token |
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+> Generate a Docker Hub access token at hub.docker.com → Account Settings → Security.
 
-jobs:
-  # jobs go here
-```
+### 2.2 — Add the build and push job
 
-### 2.2 — Add the backend test job
-
-```yaml
-  test-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: pip install -r backend/requirements.txt
-
-      - name: Run tests
-        run: |
-          cd backend
-          pytest --cov=. --cov-report=xml
-```
-
-### 2.3 — Add the frontend test job
-
-```yaml
-  test-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --prefix frontend
-
-      - name: Run tests
-        run: npm test --prefix frontend
-```
-
-### 2.4 — Add the build and push job
-
-This job runs only after both test jobs pass and only on pushes to `main`.
+This job runs only after the `test` job passes and only on pushes to `main`.
 
 ```yaml
   build-and-push:
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend]
+    needs: [test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
@@ -183,6 +130,46 @@ This job runs only after both test jobs pass and only on pushes to `main`.
           context: ./backend
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/backend:${{ github.sha }}
+```
+
+### 2.3 — Push and observe
+
+```bash
+git add .github/workflows/ci-backend.yml
+git commit -m "complete backend CI pipeline"
+git push origin main
+```
+
+Go to your repository on GitHub → **Actions** tab.
+
+**Check:**
+- [ ] The `test` job runs and passes
+- [ ] The `build-and-push` job starts only after `test` passes
+- [ ] The `build-and-push` job is skipped on pull requests
+- [ ] The backend image appears in your Docker Hub account
+
+---
+
+## Task 3 — CI Workflow for the Frontend
+
+Repeat the same pattern for the frontend. Open `.github/workflows/ci-frontend.yml` and complete the `build-and-push` job.
+
+### 3.1 — Add the build and push job
+
+```yaml
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
@@ -192,52 +179,180 @@ This job runs only after both test jobs pass and only on pushes to `main`.
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/frontend:${{ github.sha }}
 ```
 
----
-
-## Task 3 — Trigger and Observe the Pipeline
-
-Push your workflow to GitHub and watch it run.
+### 3.2 — Push and observe
 
 ```bash
-git add .github/workflows/ci.yml
-git commit -m "add CI pipeline"
+git add .github/workflows/ci-frontend.yml
+git commit -m "complete frontend CI pipeline"
 git push origin main
 ```
 
-Go to your repository on GitHub → **Actions** tab.
-
 **Check:**
-- [ ] Both test jobs run in parallel
-- [ ] The build job only starts after both tests pass
-- [ ] Images appear in your Docker Hub account
-- [ ] The pipeline fails correctly if a test breaks (try breaking one on purpose)
+- [ ] The `test` job runs and passes
+- [ ] The `build-and-push` job starts only after `test` passes
+- [ ] The frontend image appears in your Docker Hub account
 
 ---
 
 ## Task 4 — Improve the Pipeline (stretch goals)
 
-If you have time, pick one or more improvements:
+Pick one or more improvements to harden the pipeline.
 
-**Image tagging strategy**
-- Tag images with both the commit SHA and `latest`
-- Tag release images with a semantic version
+---
 
-**Add a lint step**
+### 4.1 — Image Tagging (semver + latest)
+
+Replace the commit SHA tag with a semantic version and always update `latest`.
+
 ```yaml
-- name: Lint backend
+- name: Build and push image
+  uses: docker/build-push-action@v5
+  with:
+    context: ./backend
+    push: true
+    tags: |
+      ${{ secrets.DOCKERHUB_USERNAME }}/backend:${{ github.ref_name }}
+      ${{ secrets.DOCKERHUB_USERNAME }}/backend:latest
+```
+
+> Requires creating a Git tag before pushing: `git tag v1.0.0 && git push --tags`
+
+---
+
+### 4.2 — Code Style Enforcement
+
+Enforce consistent formatting so style issues are caught in CI, not in code review.
+
+**Backend (black)**
+```yaml
+- name: Check code style
+  run: |
+    pip install black
+    black --check backend/
+```
+
+**Frontend (prettier)**
+```yaml
+- name: Check code style
+  run: |
+    npm ci --prefix frontend
+    npx prettier --check "frontend/src/**/*.{js,jsx}"
+```
+
+---
+
+### 4.3 — Linting
+
+Catch code quality issues beyond formatting.
+
+**Backend (flake8)**
+```yaml
+- name: Lint
   run: |
     pip install flake8
     flake8 backend/ --max-line-length=120
 ```
 
-**Build only changed services**
-- Use path filters to skip the backend job if only frontend files changed (and vice versa)
+**Frontend (eslint)**
+```yaml
+- name: Lint
+  run: npm run lint --prefix frontend
+```
 
-**Cache dependencies**
-- Add pip dependency caching to speed up the backend job
+---
 
-**Add a pull request summary**
-- Post a comment on PRs with test results or coverage
+### 4.4 — Test Coverage
+
+Fail the pipeline if coverage drops below a threshold.
+
+**Backend**
+```yaml
+- name: Run tests with coverage
+  run: |
+    cd backend
+    pytest --cov=. --cov-report=xml --cov-fail-under=80
+```
+
+**Frontend**
+```yaml
+- name: Run tests with coverage
+  run: npm run test --prefix frontend -- --coverage
+```
+
+---
+
+### 4.5 — Static Application Security Testing (SAST)
+
+Scan source code for security vulnerabilities without running it.
+
+**Backend (bandit)**
+```yaml
+- name: SAST — bandit
+  run: |
+    pip install bandit
+    bandit -r backend/ -ll
+```
+
+---
+
+### 4.6 — Dependency Analysis (Dependabot)
+
+Enable Dependabot to automatically open pull requests when dependencies have known vulnerabilities or newer versions are available.
+
+Create `.github/dependabot.yml`:
+
+```yaml
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+```
+
+---
+
+### 4.7 — Artifact Vulnerability Scanning (Snyk)
+
+Scan the built Docker image for known CVEs before pushing it.
+
+```yaml
+- name: Scan image for vulnerabilities
+  uses: snyk/actions/docker@master
+  env:
+    SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  with:
+    image: ${{ secrets.DOCKERHUB_USERNAME }}/backend:${{ github.sha }}
+    args: --severity-threshold=high
+```
+
+> Add `SNYK_TOKEN` to your GitHub repository secrets. Get a free token at snyk.io.
+
+---
+
+### 4.8 — Database Pipeline
+
+Complete the `build-and-push` job in `.github/workflows/ci-database.yml` following the same pattern used for the backend.
 
 ---
 
@@ -254,22 +369,24 @@ If you have time, pick one or more improvements:
 - [ ] `cd backend && pytest` passes
 - [ ] `cd frontend && npm test` passes
 
-### Task 2 — CI Workflow
-- [ ] `.github/workflows/ci.yml` created
-- [ ] Backend test job defined
-- [ ] Frontend test job defined
-- [ ] Build and push job defined, gated on test jobs
+### Task 2 — Backend CI
+- [ ] `build-and-push` job added to `ci-backend.yml`
+- [ ] Docker Hub secrets configured in GitHub repository
+- [ ] Backend image published to Docker Hub
 
-### Task 3 — Validate
-- [ ] Pipeline runs on push to `main`
-- [ ] Test jobs run in parallel
-- [ ] Build job is skipped on pull requests
-- [ ] Docker images published to Docker Hub
+### Task 3 — Frontend CI
+- [ ] `build-and-push` job added to `ci-frontend.yml`
+- [ ] Frontend image published to Docker Hub
 
 ### Task 4 — Stretch (optional)
-- [ ] Images tagged with `latest` in addition to SHA
-- [ ] Lint step added
-- [ ] Dependency caching added
+- [ ] Images tagged with semver and `latest`
+- [ ] Code style enforcement (black / prettier)
+- [ ] Linting (flake8 / eslint)
+- [ ] Test coverage with minimum threshold
+- [ ] SAST with bandit
+- [ ] Dependabot configured for all ecosystems
+- [ ] Docker image scanned with Snyk
+- [ ] Database pipeline completed
 
 ---
 
