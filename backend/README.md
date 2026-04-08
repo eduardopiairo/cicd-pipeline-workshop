@@ -8,17 +8,52 @@ FastAPI application. Runs on port **8000**.
 
 ## Run Locally
 
+### 1. Start the database
+
+The backend requires PostgreSQL running on port 5432. Start it with:
+
 ```bash
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+docker-compose -f docker-compose.db.yml up -d
 ```
 
-Open http://localhost:8000.
+### 2. Create and activate a virtual environment
 
-API docs available at http://localhost:8000/docs.
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+```
 
-> The database must be running on port 5432. Use `docker-compose -f docker-compose.db.yml up -d` to start only the database.
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure environment variables
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` if needed — the defaults work with the Docker database setup.
+
+### 5. Start the server
+
+```bash
+uvicorn app:app --port 8000 --reload
+```
+
+The `--reload` flag restarts the server automatically on code changes.
+
+### 6. Verify it is running
+
+```bash
+curl http://localhost:8000/health
+```
+
+Expected response: `{"status":"healthy","service":"DevOps Porto Get-Together Backend"}`
+
+Interactive API docs are available at http://localhost:8000/docs.
 
 ## Available Endpoints
 
