@@ -25,7 +25,7 @@ This repo                          Companion repo
 ─────────────────────────────      ──────────────────────────
 App code (v0.0.1, pre-built)  →   Kubernetes manifests
 GitHub Actions CI pipeline     →   ArgoCD (GitOps CD)
-Docker images → ghcr.io        →   Deployed to cluster
+Docker images → Docker Hub     →   Deployed to cluster
 ```
 
 ---

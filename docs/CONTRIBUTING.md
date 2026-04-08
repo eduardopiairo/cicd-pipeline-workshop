@@ -167,33 +167,29 @@ This job runs only after both test jobs pass and only on pushes to `main`.
     runs-on: ubuntu-latest
     needs: [test-backend, test-frontend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
-          tags: ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/backend:${{ github.sha }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/frontend:${{ github.sha }}
 ```
 
 ---
@@ -213,7 +209,7 @@ Go to your repository on GitHub → **Actions** tab.
 **Check:**
 - [ ] Both test jobs run in parallel
 - [ ] The build job only starts after both tests pass
-- [ ] Images appear in your GitHub Container Registry (`ghcr.io`)
+- [ ] Images appear in your Docker Hub account
 - [ ] The pipeline fails correctly if a test breaks (try breaking one on purpose)
 
 ---
@@ -268,7 +264,7 @@ If you have time, pick one or more improvements:
 - [ ] Pipeline runs on push to `main`
 - [ ] Test jobs run in parallel
 - [ ] Build job is skipped on pull requests
-- [ ] Docker images published to `ghcr.io`
+- [ ] Docker images published to Docker Hub
 
 ### Task 4 — Stretch (optional)
 - [ ] Images tagged with `latest` in addition to SHA
@@ -285,7 +281,7 @@ If you have time, pick one or more improvements:
 
 **Docker push fails with "unauthorized"**
 - Confirm `permissions: packages: write` is set on the `build-and-push` job
-- `GITHUB_TOKEN` is provided automatically — no manual secret needed for GHCR
+- Add `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` as secrets in your GitHub repository settings (Settings → Secrets → Actions)
 
 **Test job fails locally but not in CI (or vice versa)**
 ```bash
@@ -328,4 +324,4 @@ The images pushed by this pipeline are consumed by the deployment repository, wh
 - ArgoCD application definitions that watch for new image tags
 - Environment-specific configuration (dev, staging, production)
 
-When this pipeline pushes a new image to `ghcr.io`, ArgoCD detects the change and rolls out the new version automatically — that is the CD half of CI/CD.
+When this pipeline pushes a new image to Docker Hub, ArgoCD detects the change and rolls out the new version automatically — that is the CD half of CI/CD.
