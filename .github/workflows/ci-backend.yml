@@ -2,7 +2,9 @@ name: ci-backend
 
 on:
   push:
-    branches: [main]
+    branches: 
+      - main
+      - aplha-release
     paths:
       - "backend/**"
   pull_request:
@@ -30,9 +32,19 @@ jobs:
           cd backend
           pytest
 
-  # TODO: Add a build-and-push job that:
-  #   - Runs only after the test job passes
-  #   - Runs only on push to main (not on pull requests)
-  #   - Logs in to Docker Hub using DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets
-  #   - Builds the Docker image from ./backend
-  #   - Pushes the image tagged with the commit SHA
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/cicd-pipeline-workshop-app-backend:${{ github.sha }} ./backend
+
+      - name: Push Docker image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/cicd-pipeline-workshop-app-backend:${{ github.sha }}
