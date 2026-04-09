@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - aplha-release
+      - alpha-release
     paths:
       - "backend/**"
       - ".github/workflows/ci-backend.yml"
