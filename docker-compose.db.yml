@@ -11,12 +11,25 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/migrations:/flyway/sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d cicd_workshop_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  flyway:
+    image: flyway/flyway:9.22.3-alpine
+    command: >
+      -url=jdbc:postgresql://postgres:5432/workshop_db
+      -user=workshop_user
+      -password=workshop_pass
+      -locations=filesystem:/flyway/sql
+      migrate
+    volumes:
+      - ./database/migrations:/flyway/sql
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
