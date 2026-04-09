@@ -2,7 +2,9 @@ name: ci-frontend
 
 on:
   push:
-    branches: [main]
+    branches: 
+      - main
+      - alpha-release
     paths:
       - "frontend/**"
       - ".github/workflows/ci-frontend.yml"
