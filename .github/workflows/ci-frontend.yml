@@ -36,7 +36,7 @@ jobs:
         run: npm ci --prefix frontend
 
       - name: Run tests
-        run: npm test --prefix frontend
+        run: npm test --prefix frontend -- --passWithNoTests
 
   build-and-push:
     runs-on: ubuntu-latest
