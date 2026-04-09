@@ -68,6 +68,7 @@ jobs:
         with:
           repository: eduardopiairo/cicd-pipeline-workshop-config
           token: ${{ secrets.GH_PAT }}
+          ref: alpha-release
 
       - name: Update backend image tag
         run: |
@@ -87,4 +88,4 @@ jobs:
             --repo eduardopiairo/cicd-pipeline-workshop-config \
             --title "chore: update backend image tag to ${{ env.IMAGE_TAG }}" \
             --body "Automated PR to update backend image tag to \`${{ env.IMAGE_TAG }}\`." \
-            --base main
+            --base alpha-release
