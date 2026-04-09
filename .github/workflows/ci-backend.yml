@@ -80,7 +80,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b update-backend-tag-${{ env.IMAGE_TAG }}
-          git add backend/deployment.yaml
+          git add k8s/backend/deployment.yaml
           git commit -m "chore: update backend image tag to ${{ env.IMAGE_TAG }}"
           git push origin update-backend-tag-${{ env.IMAGE_TAG }}
           gh pr create \
