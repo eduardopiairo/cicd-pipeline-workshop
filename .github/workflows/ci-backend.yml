@@ -34,9 +34,26 @@ jobs:
           cd backend
           pytest
 
-  # TODO: Add a build-and-push job that:
-  #   - Runs only after the test job passes
-  #   - Runs only on push to main (not on pull requests)
-  #   - Logs in to Docker Hub using DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets
-  #   - Builds the Docker image from ./backend
-  #   - Pushes the image tagged with the commit SHA
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cicd-pipeline-backend:${{ github.sha }}
