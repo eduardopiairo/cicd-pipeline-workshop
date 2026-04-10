@@ -56,4 +56,4 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cicd-pipeline-backend:v1.0.${{ github.run_number }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cicd-pipeline-backend:1.0.${{ github.run_number }}
